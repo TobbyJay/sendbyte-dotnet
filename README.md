@@ -165,12 +165,6 @@ catch (SendbyteException exception)
         exception.StatusCode,
         exception.Code,
         exception.RequestId);
-    _logger.LogError(
-        exception,
-        "Sendbyte request failed. StatusCode: {StatusCode}, Code: {Code}, RequestId: {RequestId}",
-        exception.StatusCode,
-        exception.Code,
-        exception.RequestId);
 }
 ```
 
