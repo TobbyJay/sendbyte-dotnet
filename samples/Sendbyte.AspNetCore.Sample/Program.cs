@@ -1,6 +1,7 @@
 using System.Text;
 using Sendbyte;
 using Sendbyte.DependencyInjection;
+using Sendbyte.Domains.Models;
 using Sendbyte.Emails.Models;
 using Sendbyte.Webhooks;
 
@@ -57,6 +58,27 @@ app.MapGet("/emails", async (
     }, cancellationToken);
 
     return Results.Ok(emails);
+});
+
+
+app.MapPost("/domains", async (
+    ISendbyteClient sendbyte,
+    CreateDomainRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var domain = await sendbyte.Domains.CreateAsync(request, cancellationToken);
+
+    return Results.Ok(domain);
+});
+
+app.MapPost("/domains/{id}/verify", async (
+    string id,
+    ISendbyteClient sendbyte,
+    CancellationToken cancellationToken) =>
+{
+    var verification = await sendbyte.Domains.VerifyAsync(id, cancellationToken);
+
+    return Results.Ok(verification);
 });
 
 app.MapPost("/webhooks/sendbyte", async (

@@ -22,6 +22,7 @@ public class DependencyInjectionTests
 
         Assert.NotNull(client);
         Assert.NotNull(client.Emails);
+        Assert.NotNull(client.Domains);
     }
 
     [Fact]
