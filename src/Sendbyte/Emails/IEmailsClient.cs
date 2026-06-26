@@ -12,10 +12,21 @@ public interface IEmailsClient
     /// <summary>
     /// Sends a transactional email.
     /// </summary>
-    /// <param name="request">The email send request.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The accepted email response.</returns>
     Task<SendEmailResponse> SendAsync(
         SendEmailRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a sent email by ID.
+    /// </summary>
+    Task<EmailDetails> GetAsync(
+        string id,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists sent emails.
+    /// </summary>
+    Task<ListEmailsResponse> ListAsync(
+        ListEmailsRequest? request = null,
         CancellationToken cancellationToken = default);
 }

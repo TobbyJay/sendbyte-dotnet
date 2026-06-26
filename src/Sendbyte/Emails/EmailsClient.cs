@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -38,16 +39,40 @@ public sealed class EmailsClient : IEmailsClient
             .PostAsync("emails", content, cancellationToken)
             .ConfigureAwait(false);
 
-        var responseBody = response.Content is null
-            ? string.Empty
-            : await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return await HandleResponseAsync<SendEmailResponse>(response).ConfigureAwait(false);
+    }
 
-        if (response.StatusCode == HttpStatusCode.Created || response.StatusCode == HttpStatusCode.OK)
+    /// <inheritdoc />
+    public async Task<EmailDetails> GetAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
         {
-            return DeserializeSendEmailResponse(responseBody);
+            throw new ArgumentException("Email ID is required.", nameof(id));
         }
 
-        throw CreateSendbyteException(response, responseBody);
+        using var response = await _httpClient
+            .GetAsync("emails/" + Uri.EscapeDataString(id), cancellationToken)
+            .ConfigureAwait(false);
+
+        return await HandleResponseAsync<EmailDetails>(response).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<ListEmailsResponse> ListAsync(
+        ListEmailsRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateListEmailsRequest(request);
+
+        var path = BuildListEmailsPath(request);
+
+        using var response = await _httpClient
+            .GetAsync(path, cancellationToken)
+            .ConfigureAwait(false);
+
+        return await HandleResponseAsync<ListEmailsResponse>(response).ConfigureAwait(false);
     }
 
     private static void ValidateSendEmailRequest(SendEmailRequest request)
@@ -80,7 +105,65 @@ public sealed class EmailsClient : IEmailsClient
         }
     }
 
-    private static SendEmailResponse DeserializeSendEmailResponse(string responseBody)
+    private static void ValidateListEmailsRequest(ListEmailsRequest? request)
+    {
+        if (request?.Limit is null)
+        {
+            return;
+        }
+
+        if (request.Limit < 1 || request.Limit > 100)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Limit must be between 1 and 100.");
+        }
+    }
+
+    private static string BuildListEmailsPath(ListEmailsRequest? request)
+    {
+        if (request is null)
+        {
+            return "emails";
+        }
+
+        var queryParts = new List<string>();
+
+        if (request.Limit.HasValue)
+        {
+            queryParts.Add("limit=" + request.Limit.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.After))
+        {
+            queryParts.Add("after=" + Uri.EscapeDataString(request.After));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            queryParts.Add("status=" + Uri.EscapeDataString(request.Status));
+        }
+
+        return queryParts.Count == 0
+            ? "emails"
+            : "emails?" + string.Join("&", queryParts);
+    }
+
+    private static async Task<T> HandleResponseAsync<T>(HttpResponseMessage response)
+    {
+        var responseBody = response.Content is null
+            ? string.Empty
+            : await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return DeserializeResponse<T>(responseBody);
+        }
+
+        throw CreateSendbyteException(response, responseBody);
+    }
+
+    private static T DeserializeResponse<T>(string responseBody)
     {
         if (string.IsNullOrWhiteSpace(responseBody))
         {
@@ -89,7 +172,7 @@ public sealed class EmailsClient : IEmailsClient
 
         try
         {
-            var response = JsonSerializer.Deserialize<SendEmailResponse>(responseBody);
+            var response = JsonSerializer.Deserialize<T>(responseBody);
 
             if (response is null)
             {
