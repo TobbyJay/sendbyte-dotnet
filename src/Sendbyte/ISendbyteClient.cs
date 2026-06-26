@@ -1,5 +1,6 @@
 using Sendbyte.Domains;
 using Sendbyte.Emails;
+using Sendbyte.Webhooks;
 
 namespace Sendbyte;
 
@@ -17,4 +18,9 @@ public interface ISendbyteClient
     /// Provides access to SendByte domain APIs.
     /// </summary>
     IDomainsClient Domains { get; }
+
+    /// <summary>
+    /// Provides access to SendByte webhook management APIs.
+    /// </summary>
+    IWebhooksClient Webhooks { get; }
 }

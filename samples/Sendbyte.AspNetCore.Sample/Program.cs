@@ -4,6 +4,7 @@ using Sendbyte.DependencyInjection;
 using Sendbyte.Domains.Models;
 using Sendbyte.Emails.Models;
 using Sendbyte.Webhooks;
+using Sendbyte.Webhooks.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,6 +80,55 @@ app.MapPost("/domains/{id}/verify", async (
     var verification = await sendbyte.Domains.VerifyAsync(id, cancellationToken);
 
     return Results.Ok(verification);
+});
+
+app.MapPost("/webhooks", async (
+    ISendbyteClient sendbyte,
+    CreateWebhookRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var webhook = await sendbyte.Webhooks.CreateAsync(request, cancellationToken);
+
+    return Results.Created($"/webhooks/{webhook.Id}", webhook);
+});
+
+app.MapGet("/webhooks", async (
+    ISendbyteClient sendbyte,
+    CancellationToken cancellationToken) =>
+{
+    var webhooks = await sendbyte.Webhooks.ListAsync(cancellationToken);
+
+    return Results.Ok(webhooks);
+});
+
+app.MapDelete("/webhooks/{id}", async (
+    string id,
+    ISendbyteClient sendbyte,
+    CancellationToken cancellationToken) =>
+{
+    await sendbyte.Webhooks.DisableAsync(id, cancellationToken);
+
+    return Results.NoContent();
+});
+
+app.MapGet("/webhooks/{id}/deliveries", async (
+    string id,
+    ISendbyteClient sendbyte,
+    CancellationToken cancellationToken) =>
+{
+    var deliveries = await sendbyte.Webhooks.ListDeliveriesAsync(id, cancellationToken);
+
+    return Results.Ok(deliveries);
+});
+
+app.MapPost("/webhooks/deliveries/{id}/replay", async (
+    string id,
+    ISendbyteClient sendbyte,
+    CancellationToken cancellationToken) =>
+{
+    var delivery = await sendbyte.Webhooks.ReplayDeliveryAsync(id, cancellationToken);
+
+    return Results.Created($"/webhooks/deliveries/{delivery.Id}", delivery);
 });
 
 app.MapPost("/webhooks/sendbyte", async (

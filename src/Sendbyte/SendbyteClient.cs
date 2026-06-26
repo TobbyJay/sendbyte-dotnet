@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using Sendbyte.Domains;
 using Sendbyte.Emails;
+using Sendbyte.Webhooks;
 
 namespace Sendbyte;
 
@@ -21,6 +22,7 @@ public sealed class SendbyteClient : ISendbyteClient
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         Emails = new EmailsClient(_httpClient);
         Domains = new DomainsClient(_httpClient);
+        Webhooks = new WebhooksClient(_httpClient);
     }
 
     /// <inheritdoc />
@@ -28,4 +30,7 @@ public sealed class SendbyteClient : ISendbyteClient
 
     /// <inheritdoc />
     public IDomainsClient Domains { get; }
+
+    /// <inheritdoc />
+    public IWebhooksClient Webhooks { get; }
 }

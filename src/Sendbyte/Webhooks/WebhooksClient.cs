@@ -1,152 +1,143 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Sendbyte.Emails.Models;
 using Sendbyte.Exceptions;
+using Sendbyte.Webhooks.Models;
 
-namespace Sendbyte.Emails;
+namespace Sendbyte.Webhooks;
 
 /// <summary>
-/// Default implementation of the SendByte email client.
+/// Default implementation of the SendByte webhooks client.
 /// </summary>
-public sealed class EmailsClient : IEmailsClient
+public sealed class WebhooksClient : IWebhooksClient
 {
     private readonly HttpClient _httpClient;
 
-    internal EmailsClient(HttpClient httpClient)
+    internal WebhooksClient(HttpClient httpClient)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
     /// <inheritdoc />
-    public async Task<SendEmailResponse> SendAsync(
-        SendEmailRequest request,
+    public async Task<WebhookEndpoint> CreateAsync(
+        CreateWebhookRequest request,
         CancellationToken cancellationToken = default)
     {
-        ValidateSendEmailRequest(request);
+        ValidateCreateWebhookRequest(request);
 
         var json = JsonSerializer.Serialize(request);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var response = await _httpClient
-            .PostAsync("emails", content, cancellationToken)
+            .PostAsync("webhooks", content, cancellationToken)
             .ConfigureAwait(false);
 
-        return await HandleResponseAsync<SendEmailResponse>(response).ConfigureAwait(false);
+        return await HandleResponseAsync<WebhookEndpoint>(response).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<EmailDetails> GetAsync(
+    public async Task<ListWebhookEndpointsResponse> ListAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient
+            .GetAsync("webhooks", cancellationToken)
+            .ConfigureAwait(false);
+
+        return await HandleResponseAsync<ListWebhookEndpointsResponse>(response).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task DisableAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
-            throw new ArgumentException("Email ID is required.", nameof(id));
+            throw new ArgumentException("Webhook endpoint ID is required.", nameof(id));
         }
 
         using var response = await _httpClient
-            .GetAsync("emails/" + Uri.EscapeDataString(id), cancellationToken)
+            .DeleteAsync("webhooks/" + Uri.EscapeDataString(id), cancellationToken)
             .ConfigureAwait(false);
 
-        return await HandleResponseAsync<EmailDetails>(response).ConfigureAwait(false);
+        await HandleResponseAsync(response).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<ListEmailsResponse> ListAsync(
-        ListEmailsRequest? request = null,
+    public async Task<ListWebhookDeliveriesResponse> ListDeliveriesAsync(
+        string webhookEndpointId,
         CancellationToken cancellationToken = default)
     {
-        ValidateListEmailsRequest(request);
-
-        var path = BuildListEmailsPath(request);
+        if (string.IsNullOrWhiteSpace(webhookEndpointId))
+        {
+            throw new ArgumentException("Webhook endpoint ID is required.", nameof(webhookEndpointId));
+        }
 
         using var response = await _httpClient
-            .GetAsync(path, cancellationToken)
+            .GetAsync("webhooks/" + Uri.EscapeDataString(webhookEndpointId) + "/deliveries", cancellationToken)
             .ConfigureAwait(false);
 
-        return await HandleResponseAsync<ListEmailsResponse>(response).ConfigureAwait(false);
+        return await HandleResponseAsync<ListWebhookDeliveriesResponse>(response).ConfigureAwait(false);
     }
 
-    private static void ValidateSendEmailRequest(SendEmailRequest request)
+    /// <inheritdoc />
+    public async Task<WebhookDelivery> ReplayDeliveryAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            throw new ArgumentException("Webhook delivery ID is required.", nameof(id));
+        }
+
+        using var response = await _httpClient
+            .PostAsync("webhooks/deliveries/" + Uri.EscapeDataString(id) + "/replay", content: null, cancellationToken)
+            .ConfigureAwait(false);
+
+        return await HandleResponseAsync<WebhookDelivery>(response).ConfigureAwait(false);
+    }
+
+    private static void ValidateCreateWebhookRequest(CreateWebhookRequest request)
     {
         if (request is null)
         {
             throw new ArgumentNullException(nameof(request));
         }
 
-        if (string.IsNullOrWhiteSpace(request.From))
+        if (string.IsNullOrWhiteSpace(request.Url))
         {
-            throw new ArgumentException("From is required.", nameof(request));
+            throw new ArgumentException("Webhook URL is required.", nameof(request));
         }
 
-        if (request.To is null || request.To.Count == 0 || request.To.Any(string.IsNullOrWhiteSpace))
+        if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) ||
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("At least one recipient is required.", nameof(request));
+            throw new ArgumentException("Webhook URL must be an absolute HTTPS URL.", nameof(request));
         }
 
-        if (string.IsNullOrWhiteSpace(request.Subject))
+        if (request.Events is not null && request.Events.Any(string.IsNullOrWhiteSpace))
         {
-            throw new ArgumentException("Subject is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Html)
-            && string.IsNullOrWhiteSpace(request.Text)
-            && string.IsNullOrWhiteSpace(request.TemplateId))
-        {
-            throw new ArgumentException("At least one of Html, Text, or TemplateId is required.", nameof(request));
+            throw new ArgumentException("Webhook events cannot be empty.", nameof(request));
         }
     }
 
-    private static void ValidateListEmailsRequest(ListEmailsRequest? request)
+    private static async Task HandleResponseAsync(HttpResponseMessage response)
     {
-        if (request?.Limit is null)
+        var responseBody = response.Content is null
+            ? string.Empty
+            : await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
         {
             return;
         }
 
-        if (request.Limit < 1 || request.Limit > 100)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(request),
-                "Limit must be between 1 and 100.");
-        }
-    }
-
-    private static string BuildListEmailsPath(ListEmailsRequest? request)
-    {
-        if (request is null)
-        {
-            return "emails";
-        }
-
-        var queryParts = new List<string>();
-
-        if (request.Limit.HasValue)
-        {
-            queryParts.Add("limit=" + request.Limit.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.After))
-        {
-            queryParts.Add("after=" + Uri.EscapeDataString(request.After));
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Status))
-        {
-            queryParts.Add("status=" + Uri.EscapeDataString(request.Status));
-        }
-
-        return queryParts.Count == 0
-            ? "emails"
-            : "emails?" + string.Join("&", queryParts);
+        throw CreateSendbyteException(response, responseBody);
     }
 
     private static async Task<T> HandleResponseAsync<T>(HttpResponseMessage response)

@@ -2,7 +2,7 @@
 
 A .NET SDK for the SendByte API.
 
-> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, email retrieval, email listing, domain registration, domain verification, webhook signature verification, basic validation, and API error handling.
+> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, email retrieval, email listing, domain registration, domain verification, webhook endpoint management, webhook signature verification, basic validation, and API error handling.
 
 ## Installation
 
@@ -129,6 +129,81 @@ foreach (var check in verification.Checks)
 }
 ```
 
+## Create a Webhook Endpoint
+
+The webhook secret is returned only when the endpoint is created. Store it securely and use it for signature verification.
+
+```csharp
+using Sendbyte.Webhooks;
+using Sendbyte.Webhooks.Models;
+
+var webhook = await _sendbyte.Webhooks.CreateAsync(new CreateWebhookRequest
+{
+    Url = "https://example.com/webhooks/sendbyte",
+    Events = new[]
+    {
+        WebhookEventTypes.EmailDelivered,
+        WebhookEventTypes.EmailBounced,
+        WebhookEventTypes.DomainVerified
+    }
+});
+
+_logger.LogInformation(
+    "Created Sendbyte webhook {WebhookId}. Store the returned secret securely.",
+    webhook.Id);
+```
+
+## List Webhook Endpoints
+
+List responses do not include webhook secrets.
+
+```csharp
+var webhooks = await _sendbyte.Webhooks.ListAsync();
+
+foreach (var webhook in webhooks.Data)
+{
+    _logger.LogInformation(
+        "Webhook {WebhookId} posts to {Url}. Disabled: {Disabled}",
+        webhook.Id,
+        webhook.Url,
+        webhook.Disabled);
+}
+```
+
+## Disable a Webhook Endpoint
+
+```csharp
+await _sendbyte.Webhooks.DisableAsync("wh_123");
+
+_logger.LogInformation("Disabled Sendbyte webhook {WebhookId}", "wh_123");
+```
+
+## List Webhook Deliveries
+
+```csharp
+var deliveries = await _sendbyte.Webhooks.ListDeliveriesAsync("wh_123");
+
+foreach (var delivery in deliveries.Data)
+{
+    _logger.LogInformation(
+        "Webhook delivery {DeliveryId} for {Event} has status {Status}",
+        delivery.Id,
+        delivery.Event,
+        delivery.Status);
+}
+```
+
+## Replay a Webhook Delivery
+
+```csharp
+var delivery = await _sendbyte.Webhooks.ReplayDeliveryAsync("wd_123");
+
+_logger.LogInformation(
+    "Replayed Sendbyte webhook delivery {DeliveryId}. Status: {Status}",
+    delivery.Id,
+    delivery.Status);
+```
+
 ## Webhook Signature Verification
 
 Verify SendByte webhooks against the raw request body before trusting the payload.
@@ -183,6 +258,11 @@ catch (SendbyteException exception)
 - List sent emails
 - Register sending domains
 - Verify sending domains
+- Create webhook endpoints
+- List webhook endpoints
+- Disable webhook endpoints
+- List webhook deliveries
+- Replay webhook deliveries
 - Webhook signature verification
 - Typed request/response models
 - Basic request validation
@@ -191,7 +271,6 @@ catch (SendbyteException exception)
 
 ## Coming Soon
 
-- Webhook management APIs
 - Template APIs
 - NuGet publishing
 
