@@ -90,7 +90,7 @@ public static class SendbyteWebhookVerifier
             return false;
         }
 
-        if (!TryParseSignatureHeader(signatureHeader, out var timestamp, out var receivedSignature))
+        if (!TryParseSignatureHeader(signatureHeader!, out var timestamp, out var receivedSignature))
         {
             return false;
         }
@@ -150,12 +150,12 @@ public static class SendbyteWebhookVerifier
             return false;
         }
 
-        if (!IsHex(signaturePart))
+        if (!IsHex(signaturePart!))
         {
             return false;
         }
 
-        signature = signaturePart;
+        signature = signaturePart!;
         return true;
     }
 
