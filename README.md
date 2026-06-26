@@ -2,7 +2,7 @@
 
 A .NET SDK for the SendByte API.
 
-> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, basic validation, and API error handling.
+> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, email retrieval, email listing, basic validation, and API error handling.
 
 ## Installation
 
@@ -55,7 +55,37 @@ var response = await _sendbyte.Emails.SendAsync(new SendEmailRequest
     IdempotencyKey = "order-123-receipt"
 });
 
-Console.WriteLine(response.Id);
+_logger.LogInformation("Sendbyte accepted email {EmailId}", response.Id);
+```
+
+## Retrieve an Email
+
+```csharp
+var email = await _sendbyte.Emails.GetAsync("em_123");
+
+_logger.LogInformation(
+    "Email {EmailId} has status {Status}",
+    email.Id,
+    email.Status);
+```
+
+## List Emails
+
+```csharp
+var emails = await _sendbyte.Emails.ListAsync(new ListEmailsRequest
+{
+    Limit = 20,
+    Status = "delivered"
+});
+
+foreach (var email in emails.Data)
+{
+    _logger.LogInformation(
+        "Email {EmailId} to {RecipientCount} recipient(s) has status {Status}",
+        email.Id,
+        email.To.Count,
+        email.Status);
+}
 ```
 
 ## Error Handling
@@ -71,9 +101,12 @@ try
 }
 catch (SendbyteException exception)
 {
-    Console.WriteLine(exception.StatusCode);
-    Console.WriteLine(exception.Code);
-    Console.WriteLine(exception.RequestId);
+    _logger.LogError(
+        exception,
+        "Sendbyte request failed. StatusCode: {StatusCode}, Code: {Code}, RequestId: {RequestId}",
+        exception.StatusCode,
+        exception.Code,
+        exception.RequestId);
 }
 ```
 
@@ -81,6 +114,8 @@ catch (SendbyteException exception)
 
 - ASP.NET Core dependency injection
 - Transactional email sending
+- Retrieve email by ID
+- List sent emails
 - Typed request/response models
 - Basic request validation
 - Basic API error handling
@@ -88,12 +123,11 @@ catch (SendbyteException exception)
 
 ## Coming Soon
 
-- Retrieve email by ID
-- List sent emails
 - Domain APIs
 - Template APIs
 - Webhook APIs
 - Webhook signature verification
+- NuGet publishing
 
 ## Development
 
