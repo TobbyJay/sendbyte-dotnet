@@ -2,7 +2,7 @@
 
 A .NET SDK for the SendByte API.
 
-> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, email retrieval, email listing, webhook signature verification, basic validation, and API error handling.
+> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, email retrieval, email listing, domain registration, domain verification, webhook signature verification, basic validation, and API error handling.
 
 ## Installation
 
@@ -92,6 +92,43 @@ foreach (var email in emails.Data)
 }
 ```
 
+## Register a Domain
+
+```csharp
+using Sendbyte.Domains.Models;
+
+var domain = await _sendbyte.Domains.CreateAsync(new CreateDomainRequest
+{
+    Domain = "paylink.ng"
+});
+
+foreach (var record in domain.DnsRecords)
+{
+    _logger.LogInformation(
+        "Publish {Type} record for {Purpose}: {Host} => {Value}",
+        record.Type,
+        record.Purpose,
+        record.Host,
+        record.Value);
+}
+```
+
+## Verify a Domain
+
+```csharp
+var verification = await _sendbyte.Domains.VerifyAsync("dom_123");
+
+foreach (var check in verification.Checks)
+{
+    _logger.LogInformation(
+        "Domain check {Purpose} for {Host}. Required: {Required}. Passed: {Passed}",
+        check.Purpose,
+        check.Host,
+        check.Required,
+        check.Pass);
+}
+```
+
 ## Webhook Signature Verification
 
 Verify SendByte webhooks against the raw request body before trusting the payload.
@@ -114,36 +151,6 @@ The signature header name is available as:
 
 ```csharp
 SendbyteWebhookVerifier.SignatureHeader
-```
-
-Example ASP.NET Core endpoint:
-
-```csharp
-using System.Text;
-using Sendbyte.Webhooks;
-
-app.MapPost("/webhooks/sendbyte", async (
-    HttpRequest request,
-    IConfiguration configuration,
-    CancellationToken cancellationToken) =>
-{
-    using var reader = new StreamReader(
-        request.Body,
-        Encoding.UTF8,
-        detectEncodingFromByteOrderMarks: false,
-        leaveOpen: false);
-
-    var rawBody = await reader.ReadToEndAsync(cancellationToken);
-    var signatureHeader = request.Headers[SendbyteWebhookVerifier.SignatureHeader].ToString();
-    var webhookSecret = configuration["Sendbyte:WebhookSecret"];
-
-    if (!SendbyteWebhookVerifier.VerifySignature(webhookSecret!, signatureHeader, rawBody))
-    {
-        return Results.Unauthorized();
-    }
-
-    return Results.Ok();
-});
 ```
 
 ## Error Handling
@@ -174,6 +181,8 @@ catch (SendbyteException exception)
 - Transactional email sending
 - Retrieve email by ID
 - List sent emails
+- Register sending domains
+- Verify sending domains
 - Webhook signature verification
 - Typed request/response models
 - Basic request validation
@@ -182,7 +191,6 @@ catch (SendbyteException exception)
 
 ## Coming Soon
 
-- Domain APIs
 - Webhook management APIs
 - Template APIs
 - NuGet publishing

@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using Sendbyte.Domains;
 using Sendbyte.Emails;
 
 namespace Sendbyte;
@@ -19,8 +20,12 @@ public sealed class SendbyteClient : ISendbyteClient
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         Emails = new EmailsClient(_httpClient);
+        Domains = new DomainsClient(_httpClient);
     }
 
     /// <inheritdoc />
     public IEmailsClient Emails { get; }
+
+    /// <inheritdoc />
+    public IDomainsClient Domains { get; }
 }
