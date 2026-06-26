@@ -2,7 +2,7 @@
 
 A .NET SDK for the SendByte API.
 
-> Status: early development. The SDK foundation is currently implemented. Email sending and other API features will follow in upcoming phases.
+> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, basic validation, and API error handling.
 
 ## Installation
 
@@ -39,9 +39,61 @@ public sealed class NotificationService
 }
 ```
 
-## Basic Usage
+## Send an Email
 
-Email sending will be implemented in the next phase.
+```csharp
+using Sendbyte.Emails.Models;
+
+var response = await _sendbyte.Emails.SendAsync(new SendEmailRequest
+{
+    From = "PayLink <hello@example.com>",
+    To = new[] { "customer@example.com" },
+    Subject = "Receipt for ₦45,000",
+    Html = "<p>Your payment was received.</p>",
+    Text = "Your payment was received.",
+    Tags = new[] { "receipt", "payment" },
+    IdempotencyKey = "order-123-receipt"
+});
+
+Console.WriteLine(response.Id);
+```
+
+## Error Handling
+
+Non-success API responses throw `SendbyteException`.
+
+```csharp
+using Sendbyte.Exceptions;
+
+try
+{
+    await _sendbyte.Emails.SendAsync(request);
+}
+catch (SendbyteException exception)
+{
+    Console.WriteLine(exception.StatusCode);
+    Console.WriteLine(exception.Code);
+    Console.WriteLine(exception.RequestId);
+}
+```
+
+## Supported Features
+
+- ASP.NET Core dependency injection
+- Transactional email sending
+- Typed request/response models
+- Basic request validation
+- Basic API error handling
+- Idempotency key support
+
+## Coming Soon
+
+- Retrieve email by ID
+- List sent emails
+- Domain APIs
+- Template APIs
+- Webhook APIs
+- Webhook signature verification
 
 ## Development
 
