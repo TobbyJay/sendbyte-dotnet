@@ -30,4 +30,31 @@ app.MapPost("/send-test-email", async (
     return Results.Ok(response);
 });
 
+app.MapGet("/emails/{id}", async (
+    string id,
+    ISendbyteClient sendbyte,
+    CancellationToken cancellationToken) =>
+{
+    var email = await sendbyte.Emails.GetAsync(id, cancellationToken);
+
+    return Results.Ok(email);
+});
+
+app.MapGet("/emails", async (
+    ISendbyteClient sendbyte,
+    int? limit,
+    string? after,
+    string? status,
+    CancellationToken cancellationToken) =>
+{
+    var emails = await sendbyte.Emails.ListAsync(new ListEmailsRequest
+    {
+        Limit = limit,
+        After = after,
+        Status = status
+    }, cancellationToken);
+
+    return Results.Ok(emails);
+});
+
 app.Run();
