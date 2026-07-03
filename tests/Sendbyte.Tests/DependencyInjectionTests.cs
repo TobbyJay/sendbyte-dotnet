@@ -43,4 +43,21 @@ public class DependencyInjectionTests
 
         Assert.Contains("API key is required", exception.Message);
     }
+
+    [Fact]
+    public void AddSendbyte_WithApiKey_RegistersISendbyteClient()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSendbyte("sk_test_123");
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var client = serviceProvider.GetRequiredService<ISendbyteClient>();
+
+        Assert.NotNull(client);
+        Assert.NotNull(client.Emails);
+        Assert.NotNull(client.Domains);
+        Assert.NotNull(client.Webhooks);
+    }
 }
