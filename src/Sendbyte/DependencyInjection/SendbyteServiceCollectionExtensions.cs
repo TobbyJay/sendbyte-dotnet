@@ -12,6 +12,32 @@ namespace Sendbyte.DependencyInjection;
 public static class SendbyteServiceCollectionExtensions
 {
     /// <summary>
+    /// Registers the Sendbyte SDK using an API key.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="apiKey">The Sendbyte API key.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection AddSendbyte(
+        this IServiceCollection services,
+        string apiKey)
+    {
+        if (services is null)
+        {
+            throw new ArgumentNullException(nameof(services));
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new ArgumentException("Sendbyte API key is required.", nameof(apiKey));
+        }
+
+        return services.AddSendbyte(options =>
+        {
+            options.ApiKey = apiKey;
+        });
+    }
+
+    /// <summary>
     /// Registers the Sendbyte SDK using IHttpClientFactory.
     /// </summary>
     /// <param name="services">The service collection.</param>
