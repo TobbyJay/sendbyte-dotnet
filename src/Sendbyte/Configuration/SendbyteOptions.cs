@@ -10,7 +10,7 @@ public sealed class SendbyteOptions
     /// <summary>
     /// Default SendByte API base URL.
     /// </summary>
-    public const string DefaultBaseUrl = "https://api.sendbyte.africa/v1";
+    public const string DefaultBaseUrl = "https://api.sendbyte.africa/v1/";
 
     /// <summary>
     /// SendByte API key.
