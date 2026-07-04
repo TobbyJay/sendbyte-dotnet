@@ -64,11 +64,18 @@ public static class SendbyteServiceCollectionExtensions
             var options = serviceProvider.GetRequiredService<IOptions<SendbyteOptions>>().Value;
             options.Validate();
 
-            httpClient.BaseAddress = new Uri(options.BaseUrl);
+            httpClient.BaseAddress = new Uri(EnsureTrailingSlash(options.BaseUrl));
             httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", options.ApiKey);
         });
 
         return services;
+    }
+
+    private static string EnsureTrailingSlash(string value)
+    {
+        return value.EndsWith("/", StringComparison.Ordinal)
+            ? value
+            : value + "/";
     }
 }

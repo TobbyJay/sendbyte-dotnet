@@ -12,4 +12,12 @@ public class SendbyteOptionsTests
 
         Assert.Equal("https://api.sendbyte.africa/v1/", options.BaseUrl);
     }
+
+    [Fact]
+    public void DefaultBaseUrl_PreservesV1Path_WhenCombinedWithRelativeEndpoint()
+    {
+        var requestUri = new Uri(new Uri(SendbyteOptions.DefaultBaseUrl), "emails");
+
+        Assert.Equal("https://api.sendbyte.africa/v1/emails", requestUri.ToString());
+    }
 }
