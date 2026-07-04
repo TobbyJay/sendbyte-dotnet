@@ -2,17 +2,31 @@
 
 A .NET SDK for the SendByte API.
 
-> Status: early development. The SDK currently supports ASP.NET Core dependency injection, typed email sending, email retrieval, email listing, domain registration, domain verification, webhook endpoint management, webhook signature verification, basic validation, and API error handling.
+> Status: stable initial release. The SDK supports ASP.NET Core dependency injection, email sending, email retrieval/listing, domain registration/verification, webhook endpoint management, webhook delivery replay, webhook signature verification, validation, and API error handling.
 
 ## Installation
 
 ```bash
-dotnet add package Sendbyte --prerelease
+dotnet add package Sendbyte
+```
+
+Or install a specific version:
+
+```bash
+dotnet add package Sendbyte --version 1.0.0
 ```
 
 ## ASP.NET Core Usage
 
 Register the SDK with dependency injection:
+
+```csharp
+using Sendbyte.DependencyInjection;
+
+builder.Services.AddSendbyte(builder.Configuration["Sendbyte:ApiKey"]!);
+```
+
+You can also configure options manually:
 
 ```csharp
 using Sendbyte.DependencyInjection;
@@ -50,17 +64,22 @@ using Sendbyte.Emails.Models;
 
 var response = await _sendbyte.Emails.SendAsync(new SendEmailRequest
 {
-    From = "PayLink <hello@example.com>",
+    From = "Tobby Umoh <hello@try.sendbyte.africa>",
     To = new[] { "customer@example.com" },
-    Subject = "Receipt for ₦45,000",
-    Html = "<p>Your payment was received.</p>",
-    Text = "Your payment was received.",
-    Tags = new[] { "receipt", "payment" },
-    IdempotencyKey = "order-123-receipt"
+    Subject = "Hello from Sendbyte",
+    Html = "<p>Your email was sent successfully.</p>",
+    Text = "Your email was sent successfully.",
+    Tags = new[] { "welcome", "test" },
+    IdempotencyKey = "welcome-email-123"
 });
 
-_logger.LogInformation("Sendbyte accepted email {EmailId}", response.Id);
+_logger.LogInformation(
+    "Sendbyte accepted email {EmailId} with status {Status}",
+    response.Id,
+    response.Status);
 ```
+
+For live sending, the `From` domain must be verified in SendByte. For testing, use SendByte’s test sender where supported, for example `hello@try.sendbyte.africa`.
 
 ## Retrieve an Email
 
@@ -76,6 +95,8 @@ _logger.LogInformation(
 ## List Emails
 
 ```csharp
+using Sendbyte.Emails.Models;
+
 var emails = await _sendbyte.Emails.ListAsync(new ListEmailsRequest
 {
     Limit = 20,
@@ -99,7 +120,7 @@ using Sendbyte.Domains.Models;
 
 var domain = await _sendbyte.Domains.CreateAsync(new CreateDomainRequest
 {
-    Domain = "paylink.ng"
+    Domain = "example.com"
 });
 
 foreach (var record in domain.DnsRecords)
@@ -175,7 +196,7 @@ foreach (var webhook in webhooks.Data)
 ```csharp
 await _sendbyte.Webhooks.DisableAsync("wh_123");
 
-_logger.LogInformation("Disabled Sendbyte webhook {WebhookId}", "wh_123");
+_logger.LogInformation("Disabled Sendbyte webhook endpoint {WebhookId}", "wh_123");
 ```
 
 ## List Webhook Deliveries
@@ -186,22 +207,23 @@ var deliveries = await _sendbyte.Webhooks.ListDeliveriesAsync("wh_123");
 foreach (var delivery in deliveries.Data)
 {
     _logger.LogInformation(
-        "Webhook delivery {DeliveryId} for {Event} has status {Status}",
+        "Webhook delivery {DeliveryId} for {EventType}. StatusCode: {StatusCode}. Succeeded: {Succeeded}",
         delivery.Id,
-        delivery.Event,
-        delivery.Status);
+        delivery.EventType,
+        delivery.StatusCode,
+        delivery.Succeeded);
 }
 ```
 
 ## Replay a Webhook Delivery
 
 ```csharp
-var delivery = await _sendbyte.Webhooks.ReplayDeliveryAsync("wd_123");
+var replay = await _sendbyte.Webhooks.ReplayDeliveryAsync("del_123");
 
 _logger.LogInformation(
-    "Replayed Sendbyte webhook delivery {DeliveryId}. Status: {Status}",
-    delivery.Id,
-    delivery.Status);
+    "Created replay delivery {DeliveryId} from {OriginalDeliveryId}",
+    replay.Id,
+    replay.ReplayOf);
 ```
 
 ## Webhook Signature Verification
@@ -272,7 +294,6 @@ catch (SendbyteException exception)
 ## Coming Soon
 
 - Template APIs
-- NuGet publishing
 
 ## Development
 
@@ -282,6 +303,12 @@ Restore, build, and test the solution:
 dotnet restore
 dotnet build
 dotnet test
+```
+
+Create a release package locally:
+
+```bash
+dotnet pack src/Sendbyte/Sendbyte.csproj -c Release -o ./artifacts
 ```
 
 ## License
