@@ -10,6 +10,6 @@ public class SendbyteOptionsTests
     {
         var options = new SendbyteOptions();
 
-        Assert.Equal("https://api.sendbyte.africa/v1", options.BaseUrl);
+        Assert.Equal("https://api.sendbyte.africa/v1/", options.BaseUrl);
     }
 }
